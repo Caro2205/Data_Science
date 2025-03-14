@@ -1,0 +1,65 @@
+import pandas as pd
+import json
+import re
+
+# Load JSON data
+with open("complexity_scores.json", "r") as file:
+    json_data = json.load(file)
+
+# Load CSV data
+csv_data = pd.read_csv("Loughran_McDonald_Complexity.csv")
+
+# Extract CIK from JSON keys
+json_records = []
+for filename, json_score in json_data.items():
+    end_of_name = filename.rsplit('_', 1)[-1]   # Extract cik from JSON key
+    cik = end_of_name.split('-', 1)[0]
+    json_filedate = filename.split('_', 1)[0]
+    json_records.append({"cik": cik, "json_complexity_score": json_score, "filingdate": json_filedate})  # Convert to percentage
+
+# Create JSON DataFrame
+json_df = pd.DataFrame(json_records)
+
+# Debug: Check columns and types
+print("CSV columns:", csv_data.columns)
+print("JSON DataFrame columns:", json_df.columns)
+
+# Ensure 'cik' column is of the same type
+csv_data["cik"] = csv_data["cik"].astype(int)
+json_df["cik"] = json_df["cik"].astype(int)
+
+csv_data["filingdate"] = csv_data["filingdate"].astype(int)
+json_df["filingdate"] = json_df["filingdate"].astype(int)
+
+# Debug: Check unique CIKs
+print("Unique CIKs in CSV:", csv_data["cik"].unique())
+print("Unique CIKs in JSON DataFrame:", json_df["cik"].unique())
+
+# Merge DataFrames
+merged_data = pd.merge(csv_data, json_df, on=["cik", "filingdate"], how="inner")
+
+# Save the merged data for inspection
+merged_data.to_csv("merged_complexity_scores.csv", index=False)
+
+# Debug: Check merged data
+print("Merged data preview:")
+print(merged_data.head())
+
+import matplotlib.pyplot as plt
+
+# Plotting complexity scores
+plt.figure(figsize=(10, 6))
+plt.scatter(merged_data['complexity'], merged_data['json_complexity_score'], color='blue', alpha=0.6)
+
+# Labels and title
+plt.title("Complexity Scores Comparison", fontsize=14)
+plt.xlabel("CSV Complexity Score", fontsize=12)
+plt.ylabel("JSON Complexity Score (%)", fontsize=12)
+
+# Show grid
+plt.grid(True)
+
+# Display plot
+plt.show()
+
+print(f"correlation of original and newly calculated complexity scores: {merged_data['complexity'].corr(merged_data['json_complexity_score'])}")
